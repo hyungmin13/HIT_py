@@ -50,12 +50,12 @@ if __name__ == "__main__":
     from PINN_network import *
     from PINN_constants import *
     from PINN_problem import *
-    checkpoint_fol = "TBL_run_06"
+    checkpoint_fol = "run01"
     path = "results/summaries/"
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','rb') as f:
         a = pickle.load(f)
-    a['data_init_kwargs']['path'] = '/scratch/hyun/TBL/'
-    a['problem_init_kwargs']['path_s'] = '/scratch/hyun/Ground/'
+    a['data_init_kwargs']['path'] = '/home/hgf_dlr/hgf_dzj2734/HIT/Particles/'
+    a['problem_init_kwargs']['path_s'] = '/home/hgf_dlr/hgf_dzj2734/HIT/IsoturbFlow.mat'
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
         pickle.dump(a,f)
 
@@ -69,18 +69,17 @@ if __name__ == "__main__":
                 optimization_init_kwargs = values[5],)
     run = PINN(c)
 
-    with open(run.c.model_out_dir + "saved_dic_340000.pkl","rb") as f:
+    with open(run.c.model_out_dir + "saved_dic_580000.pkl","rb") as f:
         a = pickle.load(f)
     all_params, model_fn, train_data, valid_data = run.test()
 
     model = Model(all_params["network"]["layers"], model_fn)
     all_params["network"]["layers"] = from_state_dict(model, a).params
 #%% temporal error는 51개의 시간단계에대해서 [:,0]는 velocity error, [:,1]은 pressure error
-    output_shape = (213,141,61)
+    output_shape = (129,129,129)
     temporal_error_vel_list = []
     temporal_error_pre_list = []
     for j in tqdm(range(51),desc="temporal_error"):
-        print(j)
         pred = model_fn(all_params, valid_data['pos'].reshape((51,)+output_shape+(4,))[j,:,:,:,:].reshape(-1,4))
         output_keys = ['u', 'v', 'w', 'p']
         output_unnorm = [all_params["data"]['u_ref'],all_params["data"]['v_ref'],

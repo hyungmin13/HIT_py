@@ -56,8 +56,8 @@ if __name__ == "__main__":
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','rb') as f:
         a = pickle.load(f)
 
-    a['data_init_kwargs']['path'] = '/scratch/hyun/HIT/Particles/'
-    a['problem_init_kwargs']['path_s'] = '/home/bussard/hyun_sh/TBL_PINN/data/HIT/IsoturbFlow.mat'
+    a['data_init_kwargs']['path'] = '/home/hgf_dlr/hgf_dzj2734/HIT/Particles/'
+    a['problem_init_kwargs']['path_s'] = '/home/hgf_dlr/hgf_dzj2734/HIT/IsoturbFlow.mat'
     a['problem_init_kwargs']['problem_name'] = 'HIT'
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
         pickle.dump(a,f)

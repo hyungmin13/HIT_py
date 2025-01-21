@@ -81,8 +81,7 @@ def Derivatives(dynamic_params, all_params, g_batch, model_fns):
                   np.abs(0.5 * (deriv_mat[:, i, j] - deriv_mat[:, j, i]))**2 
                   for i in range(3) for j in range(3))
     return uvwp, vor_mag, Q
-#%%
-print(all_params["domain"]["in_max"])
+
 #%%
 if __name__ == "__main__":
     from PINN_domain import *
@@ -99,12 +98,12 @@ if __name__ == "__main__":
     delta = 36.2*10**(-6)
     x_ref_n = 1.0006*10**(-3)/delta
 
-    checkpoint_fol = "TBL_run_06"
+    checkpoint_fol = "run01"
     path = "results/summaries/"
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','rb') as f:
         a = pickle.load(f)
-    a['data_init_kwargs']['path'] = '/scratch/hyun/TBL/'
-    a['problem_init_kwargs']['path_s'] = '/scratch/hyun/Ground/'
+    a['data_init_kwargs']['path'] = '/home/hgf_dlr/hgf_dzj2734/HIT/Particles/'
+    a['problem_init_kwargs']['path_s'] = '/home/hgf_dlr/hgf_dzj2734/HIT/IsoturbFlow.mat'
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
         pickle.dump(a,f)
 
@@ -118,13 +117,14 @@ if __name__ == "__main__":
                 optimization_init_kwargs = values[5],)
     run = PINN(c)
 
-    with open(run.c.model_out_dir + "saved_dic_340000.pkl","rb") as f:
+    with open(run.c.model_out_dir + "saved_dic_580000.pkl","rb") as f:
         a = pickle.load(f)
     all_params, model_fn, train_data, valid_data = run.test()
 
     model = Model(all_params["network"]["layers"], model_fn)
     all_params["network"]["layers"] = from_state_dict(model, a).params
-
+#%%
+    output_shape = (129,129,129)
 #%%
     timestep = 25
     pos_ref = all_params["domain"]["in_max"].flatten()
@@ -132,28 +132,11 @@ if __name__ == "__main__":
                         all_params["data"]["v_ref"],
                         all_params["data"]["w_ref"]])
 #%%
-    ref_key = ['t_ref', 'x_ref', 'y_ref', 'z_ref', 'u_ref', 'v_ref', 'w_ref']
-    ref_data = {ref_key[i]:ref_val for i, ref_val in enumerate(np.concatenate([pos_ref,vel_ref]))}
-    datapath = '/home/bussard/hyun_sh/TBL_PINN/data/PG_TBL_dnsinterp.mat'
-    data = loadmat(datapath)
-    eval_key = ['x', 'y', 'z', 'x_pred', 'y_pred', 'z_pred', 'u1', 'v1', 'w1', 'p1', 'um', 'vm', 'wm']
-    DNS_grid = (0.001*data['y'][:,0,0], 0.001*data['x'][0,:,0], 0.001*data['z'][0,0,:])
-    eval_grid = np.concatenate([0.001*data['y_pred'].reshape(32,88,410)[:31,:,:].reshape(-1,1),
-                                0.001*data['x_pred'].reshape(32,88,410)[:31,:,:].reshape(-1,1),
-                                0.001*data['z_pred'].reshape(32,88,410)[:31,:,:].reshape(-1,1)],1)
-    vel_ground = [interpn(DNS_grid, data[eval_key[i+6]], eval_grid).reshape(31,88,410) for i in range(3)]
-    fluc_ground = [interpn(DNS_grid, data[eval_key[i+6]], eval_grid).reshape(31,88,410) - data[eval_key[i+10]].reshape(32,88,410)[:31,:,:] for i in range(3)]
-    p_cent = interpn(DNS_grid, data['p1'], eval_grid).reshape(31,88,410)
-    fluc_ground.append(p_cent-np.mean(p_cent))
-    V_mag = np.sqrt(fluc_ground[0]**2+fluc_ground[1]**2+fluc_ground[2]**2)
-    div_list = [V_mag, V_mag, V_mag, fluc_ground[-1]]
-    fluc_ground[-1] = (fluc_ground[-1]*u_ref_n**2 - 0.0025*eval_grid[:,1].reshape(31,88,410)[0,0,:]*x_ref_n)/u_ref_n**2
-
-    eval_grid_n = np.concatenate([np.zeros((eval_grid.shape[0],1))+timestep*(1/17954),
-                                eval_grid[:,1:2], eval_grid[:,0:1], eval_grid[:,2:3]],1)
-    for i in range(eval_grid_n.shape[1]): eval_grid_n[:,i] = eval_grid_n[:,i]/ref_data[ref_key[i]] 
+    eval_grid = valid_data['pos'].reshape(51,129,129,129,4)[timestep,:,:,:,1:].reshape(-1,3)
+    eval_grid = np.concatenate([eval_grid[:,0:1]*pos_ref[1], eval_grid[:,1:2]*pos_ref[2], eval_grid[:,2:3]*pos_ref[3]],1).reshape(output_shape+(3,))
+    eval_grid_n = valid_data['pos'].reshape(51,129,129,129,4)[timestep,:,:,:,:].reshape(-1,4)
 #%%
-    eval_grid_z = eval_grid.reshape(31,88,410,3)
+    eval_grid_z = eval_grid.reshape(output_shape+(3,))
     x_e = eval_grid_z[:,:,:,1]
     y_e = eval_grid_z[:,:,:,0]
     z_e = eval_grid_z[:,:,:,2]
@@ -166,27 +149,22 @@ if __name__ == "__main__":
     vor_mag = np.concatenate(vor_mag, axis=0)
     Q = np.concatenate(Q, axis=0)
 
-    u_fluc = uvwp[:,0].reshape(31,88,410) - data[eval_key[10]].reshape(32,88,410)[:31,:,:]
-    v_fluc = uvwp[:,1].reshape(31,88,410) - data[eval_key[11]].reshape(32,88,410)[:31,:,:]
-    w_fluc = uvwp[:,2].reshape(31,88,410) - data[eval_key[12]].reshape(32,88,410)[:31,:,:]
-    p_cent = uvwp[:,3].reshape(31,88,410) - np.mean(uvwp[:,3].reshape(31,88,410))
+    p_cent = uvwp[:,3].reshape(output_shape) - np.mean(uvwp[:,3].reshape(output_shape))
 
-    u_error = np.sqrt(np.square(uvwp[:,0].reshape(31,88,410) - vel_ground[0]))
-    v_error = np.sqrt(np.square(uvwp[:,1].reshape(31,88,410) - vel_ground[1]))
-    w_error = np.sqrt(np.square(uvwp[:,2].reshape(31,88,410) - vel_ground[2]))
-    p_error = np.sqrt(np.square(uvwp[:,3].reshape(31,88,410) - fluc_ground[3]))
+    u_error = np.sqrt(np.square(uvwp[:,0].reshape(output_shape) - valid_data['vel'][:,0].reshape(output_shape)))
+    v_error = np.sqrt(np.square(uvwp[:,1].reshape(output_shape) - valid_data['vel'][:,1].reshape(output_shape)))
+    w_error = np.sqrt(np.square(uvwp[:,2].reshape(output_shape) - valid_data['vel'][:,2].reshape(output_shape)))
+    p_error = np.sqrt(np.square(uvwp[:,3].reshape(output_shape) - valid_data['vel'][:,3].reshape(output_shape)))
 #%%
-    filename = "datas/"+checkpoint_fol+"/TBL_eval_"+str(timestep)+".dat"
+    filename = "datas/"+checkpoint_fol+"/HIT_eval_"+str(timestep)+".dat"
     if os.path.isdir("datas/"+checkpoint_fol):
         pass
     else:
         os.mkdir("datas/"+checkpoint_fol)
     X, Y, Z = (x_e[0,0,:].shape[0], y_e[0,:,0].shape[0], z_e[:31,0,0].shape[0])
-    vars = [('u_ground[m/s]', np.float32(vel_ground[0].reshape(-1))), ('v_ground[m/s]', np.float32(vel_ground[1].reshape(-1))), ('w_ground[m/s]', np.float32(vel_ground[2].reshape(-1))), ('p_ground[Pa]', np.float32(fluc_ground[-1].reshape(-1))),
-            ('u_fluc_ground[m/s]', np.float32(fluc_ground[0].reshape(-1))), ('v_fluc_ground[m/s]', np.float32(fluc_ground[1].reshape(-1))), ('w_fluc_ground[m/s]', np.float32(fluc_ground[2].reshape(-1))),
-            ('u_pred[m/s]',np.float32(uvwp[:,0].reshape(31,88,410).reshape(-1))), ('v_pred[m/s]',uvwp[:,1].reshape(31,88,410).reshape(-1)),
-            ('w_pred[m/s]',uvwp[:,2].reshape(31,88,410).reshape(-1)), ('p_pred[Pa]',uvwp[:,3].reshape(-1)),
-            ('u_fluc[m/s]',u_fluc.reshape(-1)), ('v_fluc[m/s]',v_fluc.reshape(-1)), ('w_fluc[m/s]',w_fluc.reshape(-1)),
+    vars = [('u_ground[m/s]', np.float32(valid_data['vel'][:,0].reshape(-1))), ('v_ground[m/s]', np.float32(valid_data['vel'][:,1].reshape(-1))), ('w_ground[m/s]', np.float32(valid_data['vel'][:,2].reshape(-1))), ('p_ground[Pa]', np.float32(valid_data['vel'][:,3].reshape(-1))),
+            ('u_pred[m/s]',np.float32(uvwp[:,0].reshape(output_shape).reshape(-1))), ('v_pred[m/s]',uvwp[:,1].reshape(output_shape).reshape(-1)),
+            ('w_pred[m/s]',uvwp[:,2].reshape(output_shape).reshape(-1)), ('p_pred[Pa]',uvwp[:,3].reshape(-1)),
             ('u_error[m/s]',u_error.reshape(-1)), ('v_error[m/s]',v_error.reshape(-1)), ('w_error[m/s]',w_error.reshape(-1)), ('p_error[Pa]',p_error.reshape(-1)),
             ('vormag[1/s]',vor_mag.reshape(-1)), ('Q[1/s^2]', Q.reshape(-1))]
     fw = 27
