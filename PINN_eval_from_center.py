@@ -16,6 +16,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import scipy.stats as st
 import h5py
+from tqdm import tqdm
 class Model(struct.PyTreeNode):
     params: Any
     forward: callable = struct.field(pytree_node=False)
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     a['problem_init_kwargs']['problem_name'] = 'HIT'
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
         pickle.dump(a,f)
-#%%
+    f.close()
     values = list(a.values())
 
     c = Constants(run = values[0],
@@ -70,7 +71,7 @@ if __name__ == "__main__":
                 problem_init_kwargs = values[4],
                 optimization_init_kwargs = values[5],)
     run = PINN(c)
-#%%
+
     with open(run.c.model_out_dir + "saved_dic_580000.pkl","rb") as f:
         a = pickle.load(f)
     all_params, model_fn, train_data, valid_data = run.test()
@@ -105,7 +106,6 @@ if __name__ == "__main__":
         index = np.where((valid_pos_from_center<bins[i+1])&(valid_pos_from_center>=bins[i]))
         valid_indexes.append(index[0])
 
-#%%
     train_vel_sub_list = []
     train_pos_sub_list = []
     train_pos_sub_unnorm_list = []
@@ -114,12 +114,10 @@ if __name__ == "__main__":
         train_pos_sub_unnorm_list.append(train_pos_unnorm[train_indexes[i],:])
         train_pos_sub_list.append(train_data['pos'][train_indexes[i],:])
 
-#%%
     train_pred_list_total = []
     keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
-    for i in range(len(train_pos_sub_list)):
+    for i in tqdm(range(len(train_pos_sub_list)),desc="Train data estimation"):
         pred_list = []
-        print(i)
         for j in range(train_pos_sub_list[i].shape[0]//10000+1):
             pred = model_fn(all_params, train_pos_sub_list[i][10000*j:10000*(j+1),:])
             pred_list.append(pred)
@@ -127,17 +125,14 @@ if __name__ == "__main__":
         pred_unnorm = np.concatenate([pred_list[:,k:(k+1)]*all_params["data"][keys[k]] for k in range(len(keys))],1)
         pred_unnorm[:,-1] = 1.185*pred_unnorm[:,-1]
         train_pred_list_total.append(pred_unnorm)
-#%%
+
     train_vel_error_list = []
     for i in range(len(train_pred_list_total)):
         vel_error_list = []
-        print(i)
         vel_error_list.append(np.sqrt((np.sqrt(train_pred_list_total[i][:,0]**2+train_pred_list_total[i][:,1]**2+train_pred_list_total[i][:,2]**2)-
                                        np.sqrt(train_vel_sub_list[i][:,0]**2+train_vel_sub_list[i][:,1]**2+train_vel_sub_list[i][:,2]**2))**2)/
                                        np.sqrt(train_vel_sub_list[i][:,0]**2+train_vel_sub_list[i][:,1]**2+train_vel_sub_list[i][:,2]**2))
         train_vel_error_list.append(vel_error_list)
-
-#%%
     
     dist = getattr(st,"norm")
     train_vel_mean_error_list = []
@@ -146,15 +141,13 @@ if __name__ == "__main__":
         train_vel_mean_error_list.append(mean_std[0])
     train_vel_mean_error_list = np.array(train_vel_mean_error_list)
 
-#%%
     valid_vel_sub_t_list = []
     valid_pos_sub_t_list = []
     valid_pos_sub_t_unnorm_list = []
-    for j in range(50):
+    for j in tqdm(range(50), desc="Valid data binning"):
         vel_sub_list = []
         pos_sub_list = []
         pos_sub_unnorm_list = []
-        print(j)
         for i in range(len(valid_indexes)):
             #valid_data['vel'][:,3:4] = valid_data['vel'][:,3:4]*1.185
             vel_sub_list.append(valid_data['vel'][129**3*j:129**3*(j+1),:][valid_indexes[i],:])
@@ -174,9 +167,8 @@ if __name__ == "__main__":
 
     valid_pred_list_total = []
     keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
-    for i in range(len(valid_pos_sub_t_list)):
+    for i in tqdm(range(len(valid_pos_sub_t_list)),desc="Valid data estimation"):
         pred_list = []
-        print(i)
         for j in range(len(valid_indexes)):
             valid_pos_unnorm = np.concatenate(valid_pos_sub_t_list[i][j])
             pred = model_fn(all_params, valid_pos_sub_t_list[i][j])
@@ -197,7 +189,6 @@ if __name__ == "__main__":
     for i in range(len(valid_pred_list_total)):
         vel_error_list = []
         pre_error_list = []
-        print(i)
         for j in range(len(valid_pred_list_total[i])):
             vel_error_list.append(np.sqrt((np.sqrt(valid_pred_list_total[i][j][:,0]**2+valid_pred_list_total[i][j][:,1]**2+valid_pred_list_total[i][j][:,2]**2)-np.sqrt(valid_vel_sub_t_list[i][j][:,0]**2+valid_vel_sub_t_list[i][j][:,1]**2+valid_vel_sub_t_list[i][j][:,2]**2))**2)/np.sqrt(valid_vel_sub_t_list[i][j][:,0]**2+valid_vel_sub_t_list[i][j][:,1]**2+valid_vel_sub_t_list[i][j][:,2]**2))
             pre_error_list.append(np.sqrt((np.sqrt(valid_pred_list_total[i][j][:,3]**2)-np.sqrt(valid_vel_sub_t_list[i][j][:,3]**2))**2))
@@ -231,13 +222,16 @@ if __name__ == "__main__":
                           test_vels_ext[:,2].reshape(-1,1)],1)
     print(np.linalg.norm(f, ord='fro')/np.linalg.norm(div,ord='fro'))
     print(np.linalg.norm(test_vels[:,3]-test_vels_ext[:,3])/np.linalg.norm(test_vels_ext[:,3]))
-#%%
-with open("datas/"+checkpoint_fol+"/train_error_from_center.pkl","wb") as f:
-    pickle.dump(train_vel_mean_error_list,f)
-f.close()
-with open("datas/"+checkpoint_fol+"/valid_error_from_center.pkl","wb") as f:
-    pickle.dump(valid_mean_error,f)
-f.close()
+    if os.path.isdir("datas/"+checkpoint_fol):
+        pass
+    else:
+        os.mkdir("datas/"+checkpoint_fol)
+    with open("datas/"+checkpoint_fol+"/train_error_from_center.pkl","wb") as f:
+        pickle.dump(train_vel_mean_error_list,f)
+    f.close()
+    with open("datas/"+checkpoint_fol+"/valid_error_from_center.pkl","wb") as f:
+        pickle.dump(valid_mean_error,f)
+    f.close()
 #%%
 """
 from scipy.integrate import tplquad

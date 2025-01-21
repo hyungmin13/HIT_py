@@ -161,7 +161,7 @@ if __name__ == "__main__":
 #%%
     dynamic_params = all_params["network"].pop("layers")
     uvwp, vor_mag, Q = zip(*[Derivatives(dynamic_params, all_params, eval_grid_n[i:i+10000], model_fn) 
-                             for i in range(0, eval_grid_n.shape[0], 10000)])
+                             for i in tqdm(range(0, eval_grid_n.shape[0], 10000),desc="Derivatives")])
     uvwp = np.concatenate(uvwp, axis=0)
     vor_mag = np.concatenate(vor_mag, axis=0)
     Q = np.concatenate(Q, axis=0)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     p_error = np.sqrt(np.square(uvwp[:,3].reshape(31,88,410) - fluc_ground[3]))
 #%%
     filename = "datas/"+checkpoint_fol+"/TBL_eval_"+str(timestep)+".dat"
-    if "datas/"+checkpoint_fol:
+    if os.path.isdir("datas/"+checkpoint_fol):
         pass
     else:
         os.mkdir("datas/"+checkpoint_fol)

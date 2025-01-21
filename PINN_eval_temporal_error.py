@@ -79,7 +79,7 @@ if __name__ == "__main__":
     output_shape = (213,141,61)
     temporal_error_vel_list = []
     temporal_error_pre_list = []
-    for j in range(51):
+    for j in tqdm(range(51),desc="temporal_error"):
         print(j)
         pred = model_fn(all_params, valid_data['pos'].reshape((51,)+output_shape+(4,))[j,:,:,:,:].reshape(-1,4))
         output_keys = ['u', 'v', 'w', 'p']
@@ -102,7 +102,10 @@ if __name__ == "__main__":
 
     temporal_error = np.concatenate([np.array(temporal_error_vel_list).reshape(-1,1),
                                      np.array(temporal_error_pre_list).reshape(-1,1)],1)
-
+    if os.path.isdir("datas/"+checkpoint_fol):
+        pass
+    else:
+        os.mkdir("datas/"+checkpoint_fol)
     with open("datas/"+checkpoint_fol+"/temporal_error.pkl","wb") as f:
         pickle.dump(temporal_error,f)
     f.close()
