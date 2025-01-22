@@ -123,6 +123,7 @@ if __name__ == "__main__":
 
     model = Model(all_params["network"]["layers"], model_fn)
     all_params["network"]["layers"] = from_state_dict(model, a).params
+
 #%%
     output_shape = (129,129,129)
 #%%
@@ -150,27 +151,27 @@ if __name__ == "__main__":
     Q = np.concatenate(Q, axis=0)
 
     p_cent = uvwp[:,3].reshape(output_shape) - np.mean(uvwp[:,3].reshape(output_shape))
-#%%
-    print(uvwp.shape[0]/129/129)
-#%%
+
     u_error = np.sqrt(np.square(uvwp[:,0].reshape(output_shape) - valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,0].reshape(output_shape)))
     v_error = np.sqrt(np.square(uvwp[:,1].reshape(output_shape) - valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,1].reshape(output_shape)))
     w_error = np.sqrt(np.square(uvwp[:,2].reshape(output_shape) - valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,2].reshape(output_shape)))
     p_error = np.sqrt(np.square(uvwp[:,3].reshape(output_shape) - valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,3].reshape(output_shape)))
+
 #%%
     filename = "datas/"+checkpoint_fol+"/HIT_eval_"+str(timestep)+".dat"
     if os.path.isdir("datas/"+checkpoint_fol):
         pass
     else:
         os.mkdir("datas/"+checkpoint_fol)
-    X, Y, Z = (x_e[0,0,:].shape[0], y_e[0,:,0].shape[0], z_e[:31,0,0].shape[0])
-    vars = [('u_ground[m/s]', np.float32(valid_data['vel'][:,0].reshape(-1))), ('v_ground[m/s]', np.float32(valid_data['vel'][:,1].reshape(-1))), ('w_ground[m/s]', np.float32(valid_data['vel'][:,2].reshape(-1))), ('p_ground[Pa]', np.float32(valid_data['vel'][:,3].reshape(-1))),
-            ('u_pred[m/s]',np.float32(uvwp[:,0].reshape(output_shape).reshape(-1))), ('v_pred[m/s]',uvwp[:,1].reshape(output_shape).reshape(-1)),
-            ('w_pred[m/s]',uvwp[:,2].reshape(output_shape).reshape(-1)), ('p_pred[Pa]',uvwp[:,3].reshape(-1)),
+    X, Y, Z = (y_e[0,0,:].shape[0], x_e[0,:,0].shape[0], z_e[:,0,0].shape[0])
+    vars = [('u_ground[m/s]', np.float32(valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,0].reshape(-1))),
+            ('v_ground[m/s]', np.float32(valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,1].reshape(-1))), 
+            ('w_ground[m/s]', np.float32(valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,2].reshape(-1))), 
+            ('p_ground[Pa]', np.float32(valid_data['vel'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,3].reshape(-1))),
+            ('u_pred[m/s]',np.float32(uvwp[:,0].reshape(-1))), ('v_pred[m/s]',uvwp[:,1].reshape(-1)),
+            ('w_pred[m/s]',uvwp[:,2].reshape(-1)), ('p_pred[Pa]',uvwp[:,3].reshape(-1)),
             ('u_error[m/s]',u_error.reshape(-1)), ('v_error[m/s]',v_error.reshape(-1)), ('w_error[m/s]',w_error.reshape(-1)), ('p_error[Pa]',p_error.reshape(-1)),
             ('vormag[1/s]',vor_mag.reshape(-1)), ('Q[1/s^2]', Q.reshape(-1))]
     fw = 27
-    tecplot_Mesh(filename, X, Y, Z, x_e.reshape(-1), y_e.reshape(-1), z_e.reshape(-1), vars, fw)
+    tecplot_Mesh(filename, X, Y, Z, y_e.reshape(-1), x_e.reshape(-1), z_e.reshape(-1), vars, fw)
 
-
-# %%

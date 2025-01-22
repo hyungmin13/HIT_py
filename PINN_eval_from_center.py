@@ -233,11 +233,11 @@ if __name__ == "__main__":
         pickle.dump(valid_mean_error,f)
     f.close()
 #%%
-"""
+
 from scipy.integrate import tplquad
-L = 0.056
-W = 0.012
-H = 0.00424
+L = 0.1
+W = 0.1
+H = 0.1
 def sphere_condition(x,y,z):
     return x**2+y**2+z**2<r**2
 def intergrand(x,y,z):
@@ -258,7 +258,7 @@ f.close()
 with open("datas/counts.pkl","wb") as f:
     pickle.dump(counts,f)
 f.close()
-"""
+
 
 #%%
 
