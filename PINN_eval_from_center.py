@@ -233,33 +233,28 @@ if __name__ == "__main__":
         pickle.dump(valid_mean_error,f)
     f.close()
 #%%
-
-from scipy.integrate import tplquad
-L = 0.1
-W = 0.1
-H = 0.1
-def sphere_condition(x,y,z):
-    return x**2+y**2+z**2<r**2
-def intergrand(x,y,z):
-    return 1 if sphere_condition(x,y,z) else 0
-volumes = []
-for i in range(len(bins)):
-    print(i)
-    r = bins[i]
-    volume, error = tplquad(intergrand, -L/2, L/2, lambda x:-W/2, lambda x:W/2, lambda x,y:-H/2, lambda x,y:H/2)
-    volumes.append(volume)
+    from scipy.integrate import tplquad
+    L = 0.1
+    W = 0.1
+    H = 0.1
+    def sphere_condition(x,y,z):
+        return x**2+y**2+z**2<r**2
+    def intergrand(x,y,z):
+        return 1 if sphere_condition(x,y,z) else 0
+    volumes = []
+    for i in range(len(bins)):
+        print(i)
+        r = bins[i]
+        print(r)
+        volume, error = tplquad(intergrand, -L/2, L/2, lambda x:-W/2, lambda x:W/2, lambda x,y:-H/2, lambda x,y:H/2)
+        volumes.append(volume)
     sub_volumes = np.array(volumes[1:])-np.array(volumes[:-1])
     c_vol_avg = np.array(counts)/np.array(sub_volumes)
-    plt.hist(bins[:-1], bins,weights=c_vol_avg)
-    plt.show()
-with open("datas/sub_volumes.pkl","wb") as f:
-    pickle.dump(sub_volumes,f)
-f.close()
-with open("datas/counts.pkl","wb") as f:
-    pickle.dump(counts,f)
-f.close()
-
-
-#%%
-
-
+    #plt.hist(bins[:-1], bins,weights=c_vol_avg)
+    #plt.show()
+    with open("datas/sub_volumes.pkl","wb") as f:
+        pickle.dump(sub_volumes,f)
+    f.close()
+    with open("datas/counts.pkl","wb") as f:
+        pickle.dump(counts,f)
+    f.close()
