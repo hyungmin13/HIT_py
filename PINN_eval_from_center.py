@@ -83,7 +83,7 @@ if __name__ == "__main__":
     t_pos_un = np.concatenate([train_data['pos'][:,i:i+1]*all_params["domain"]["in_max"][0,i]
                                  for i in range(4)],1).reshape(-1,4)
 
-    t_pos_c = t_pos_un - np.array([0,0.05,0.05,0.05]).reshape(-1,4)
+    t_pos_c = t_pos_un - np.array(all_params["domain"]["in_max"][0]/2).reshape(-1,4)
     t_pos_c = np.sqrt(t_pos_c[:,1]**2+t_pos_c[:,2]**2+t_pos_c[:,3]**2)
     t_pos_un = t_pos_un.reshape(-1,4)
 
