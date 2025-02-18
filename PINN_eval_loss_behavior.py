@@ -163,7 +163,8 @@ if __name__ == "__main__":
         all_params["network"]["layers"] = from_state_dict(model, a).params
 
         pred = model_fn(all_params, valid_data['pos'].reshape((51,)+output_shape+(4,))[timestep,:,:,:,:].reshape(-1,4))
-        acc = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, train_data['pos'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)])][10000*s:10000*(s+1)], model_fn) for s in range(train_data['pos'].shape[0]//10000+1)],0)
+        acc = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, train_data['pos'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)])][10000*s:10000*(s+1)], model_fn) 
+                              for s in range(train_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])].shape[0]//10000+1)],0)
         output_keys = ['u', 'v', 'w', 'p']
         output_unnorm = [all_params["data"]['u_ref'],all_params["data"]['v_ref'],
                         all_params["data"]['w_ref'],1.185*all_params["data"]['u_ref']]
