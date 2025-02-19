@@ -15,6 +15,7 @@ import pickle
 from pathlib import Path
 import matplotlib.pyplot as plt
 import scipy.stats as st
+from soap_jax import soap
 class Model(struct.PyTreeNode):
     params: Any
     forward: callable = struct.field(pytree_node=False)
@@ -131,7 +132,9 @@ class PINN(PINNbase):
         key, network_key = random.split(global_key)
         all_params["network"] = self.c.network.init_params(**self.c.network_init_kwargs)
         all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
-        optimiser = self.c.optimization_init_kwargs["optimiser"](self.c.optimization_init_kwargs["learning_rate"])
+        learn_rate = optax.exponential_decay(self.c.optimization_init_kwargs["learning_rate"],16000,0.9)
+        optimiser = self.c.optimization_init_kwargs["optimiser"](learning_rate=learn_rate, b1=0.95, b2=0.95,
+                                                                 weight_decay=0.01, precondition_frequency=5)
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
         all_params = self.c.problem.constraints(all_params)
@@ -276,7 +279,7 @@ if __name__=="__main__":
     problem_name = 'HIT'
     # Set optimization params
     n_steps = 100000000
-    optimiser = optax.adam
+    optimiser = soap
     learning_rate = 1e-2
     p_batch = 10000
     e_batch = 10000
